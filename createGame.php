@@ -31,6 +31,19 @@
   $userName = mysqli_real_escape_string($link, $data->{'userName'});
 
   // ->maintenance
+  // purge any player records that have not been updated in over 10 minutes
+  for($i=2; $i--;){
+    $table = '';
+    switch($i){
+      case 0: $table = 'platformSessions'; break;
+      //case 1: $table = 'platformGames'; break;
+    }
+    if($table){
+      $sql = "DELETE FROM $table WHERE TIME_TO_SEC(TIMEDIFF(CURRENT_TIMESTAMP, date)) >= 600;";
+      $res = mysqli_query($link, $sql);
+    }
+  }
+
   // purge any game records older than 1 day
   for($i=2; $i--;){
     $table = '';
