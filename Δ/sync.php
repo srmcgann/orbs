@@ -3,6 +3,7 @@
   $data = json_decode(file_get_contents('php://input'));
   $gameID = mysqli_real_escape_string($link, $data->{'gameID'});
   $userID = mysqli_real_escape_string($link, $data->{'userID'});
+  $collected = $data->{'collected'};
   $individualPlayerData = $data->{'individualPlayerData'};
   
   $igt = gettype($individualPlayerData);
@@ -17,21 +18,6 @@
   }
   
   $success = false;
-  
-  // ->maintenance
-  // purge any player records that have not been updated in over 10 minutes
-  for($i=2; $i--;){
-    $table = '';
-    switch($i){
-      case 0: $table = 'platformSessions'; break;
-      //case 1: $table = 'platformGames'; break;
-    }
-    if($table){
-      $sql = "DELETE FROM $table WHERE TIME_TO_SEC(TIMEDIFF(CURRENT_TIMESTAMP, date)) >= 600;";
-      $res = mysqli_query($link, $sql);
-    }
-  }
-  // /maintenance
 
   $sql = "SELECT * FROM platformGames WHERE id = $gameID";
   $res = mysqli_query($link, $sql);
@@ -41,6 +27,21 @@
     $success = true;
     $row = mysqli_fetch_assoc($res);
     $data = json_decode($row['data']);
+    $colSize = sizeof($collected);
+    $existingSize = sizeof($data->{'collected'});
+    $maxSize = max($colSize, $existingSize);
+    $newCol = [];
+    for($i = 0; $i<$maxSize; $i++){
+      if(
+        ($i < $colSize && $collected[$i] === '1') ||
+        ($i < $existingSize && $data->{'collected'} === '1')
+      ){
+        $newCol[]= '1';
+      }else{
+        $newCol[]= '0';
+      }
+    }
+    $data->{'collected'} = $newCol;
     forEach($data->{'players'} as $key=>$player){
       // player drops if unseen for 10 seconds
       if(isset($player->{'time'}) && (time() - $player->{'time'} > 10)){

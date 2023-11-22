@@ -1268,7 +1268,7 @@
             grav              = .15
             grounded          = false
             hasTraction       = false
-            keys              = Array(256).fill(false)
+            keys              = Array(30).fill(0)
             based             = false
             alive             = true
             bgAlpha           = 0
@@ -1279,10 +1279,10 @@
 
           PlayerInit = idx => { // called initially & when a player dies
             Players[idx].flymode          = false
-            Players[idx].keys             = Array(256).fill(false)
+            Players[idx].keys             = Array(30).fill(0)
             Players[idx].orbs             = []
             Players[idx].bases            = []
-            Players[idx].mobile           = true
+            Players[idx].mobile           = false
             Players[idx].accelr           = 0
             Players[idx].accelm           = 0
             Players[idx].jumpv            = 0
@@ -1305,6 +1305,12 @@
             Players[idx].Rlv              = 0
             Players[idx].Ptv              = 0
             Players[idx].Ywv              = 0
+            Players[idx].toX              = 0
+            Players[idx].toY              = 0
+            Players[idx].toZ              = 0
+            Players[idx].tRl              = 0
+            Players[idx].tPt              = 0
+            Players[idx].tYw              = 0
             Players[idx].oX               = S(p=Math.PI*2/PlayerCount*idx) * PlayerLs
             Players[idx].oZ               = C(p) * PlayerLs
             Players[idx].oY               = -floor(-Players[idx].oX, -Players[idx].oZ, -Players[idx].oX, -Players[idx].oZ) - playerHeight
@@ -1320,7 +1326,6 @@
             Players[idx].based            = false
             Players[idx].alive            = true
             Players[idx].fl               = -floor(-Players[idx].oX,-Players[idx].oZ,-Players[idx].oX,-Players[idx].oZ)
-            Players[idx].behavior         = 0 // 0=default (collection), 1=offense, 2=defense
             //console.log('****',Players[idx])
           }
           
@@ -1343,6 +1348,7 @@
             cams             = []
             oldCams          = []
             iCamsc           = 0
+            lerpFactor       = 1/10//1000/pollFreq/60
             firstRun         = true
             camLength        = -10
             camFollowDist    = 150
@@ -1353,7 +1359,75 @@
             alpha            = 0
             accellr = accelm = 1
             objectiveText    = 'collect the orbs'
-            keys             = Array(128).fill(0)
+            keymap           = Array(256).fill().map((key,idx)=>{
+                                 key = null
+                                 switch(idx){
+                                   case 48: key = 0; break
+                                   case 49: key = 1; break
+                                   case 50: key = 2; break
+                                   case 51: key = 3; break
+                                   case 52: key = 4; break
+                                   case 52: key = 5; break
+                                   case 54: key = 6; break
+                                   case 55: key = 7; break
+                                   case 56: key = 8; break
+                                   case 57: key = 9; break
+                                   case 65: key = 10; break
+                                   case 87: key = 11; break
+                                   case 68: key = 12; break
+                                   case 83: key = 13; break
+                                   case 9:  key = 14; break
+                                   case 16: key = 15; break
+                                   case 17: key = 16; break
+                                   case 18: key = 17; break
+                                   case 80: key = 18; break
+                                   case 66: key = 19; break
+                                   case 67: key = 20; break
+                                   case 77: key = 21; break
+                                   case 84: key = 22; break
+                                   case 37: key = 23; break
+                                   case 38: key = 24; break
+                                   case 39: key = 25; break
+                                   case 40: key = 26; break
+                                   case 32: key = 27; break
+                                   case 33: key = 28; break
+                                   case 34: key = 29; break
+                                 }
+                                 return key
+                               })
+                               /* legend
+                                 0      = 0 / 48
+                                 1      = 1 / 49
+                                 2      = 2 / 50
+                                 3      = 3 / 51
+                                 4      = 4 / 52
+                                 5      = 5 / 53
+                                 6      = 6 / 54
+                                 7      = 7 / 55
+                                 8      = 8 / 56
+                                 9      = 9 / 57
+                                 A      = 10 / 65
+                                 W      = 11 / 87
+                                 D      = 12 / 68
+                                 S      = 13 / 83
+                                 TAB    = 14 / 9
+                                 SHIFT  = 15 / 16
+                                 CTRL   = 16 / 17
+                                 ALT    = 17 / 18
+                                 P      = 18 / 80
+                                 B      = 19 / 66
+                                 C      = 20 / 67
+                                 M      = 21 / 77
+                                 T      = 22 / 84
+                                 LARR   = 23 / 37
+                                 UARR   = 24 / 38
+                                 RARR   = 25 / 39
+                                 DARR   = 26 / 40
+                                 SPC    = 27 / 32
+                                 PGUP   = 28 / 33
+                                 PGDN   = 29 / 34
+                               */
+            keys             = Array(30).fill(0)
             camMainScreen    = false
             showScores       = true
             playerSize       = 20
@@ -1391,14 +1465,14 @@
               AI.oZv -= vz
             }else if(AI.elevation == 0 || AI.jumpTimer<=t && AI.hasTraction){
               AI.jumpvv -= jumpHeight * (1+AI.accelm/2)
-              AI.keys[32] = false
+              AI.keys[27] = false
               AI.jumpTimer = t+.25
             }
           }
 
           AIleft = idx =>{
             AI = Players[idx]
-            if(AI.keys[18]){
+            if(AI.keys[17]){
               if(AI.hasTraction || AI.flymode){
                 vx  = S(-AI.Yw+Math.PI/2) * C(-AI.Rl) * AI.mv * AI.accelm
                 vy  = -S(-AI.Rl) * AI.mv * AI.accelm
@@ -1417,7 +1491,7 @@
           }
           AIright = idx =>{
             AI = Players[idx]
-            if(AI.keys[18]){
+            if(AI.keys[17]){
               if(AI.hasTraction || AI.flymode){
                 vx  = S(-AI.Yw+Math.PI/2) * C(-AI.Rl) * AI.mv * AI.accelm
                 vy  = -S(-AI.Rl) * AI.mv * AI.accelm
@@ -1583,15 +1657,17 @@
               case 84: showCrosshair=!showCrosshair; break
               case 77: showMenu=!showMenu; break
             }
-            keys[e.keyCode] = 1
+            keys[keymap[e.keyCode]] = 1
+            //console.log('keys',keys)
+            //console.log('keymap',keymap)
           }
           c.onkeyup = e => {
             e.preventDefault()
             e.stopPropagation()
-            keys[e.keyCode] = ''
+            keys[keymap[e.keyCode]] = ''
           }
           left = () =>{
-            if(keys[18]){
+            if(keys[17]){
               if(hasTraction || flymode){
                 vx  = S(-Yw+Math.PI/2) * C(-Rl) * mv * accelm
                 vy  = -S(-Rl) * mv * accelm
@@ -1608,7 +1684,7 @@
             Ptv+=rv * accelr
           }
           right = () =>{
-            if(keys[18]){
+            if(keys[17]){
               if(hasTraction || flymode){
                 vx  = S(-Yw+Math.PI/2) * C(-Rl) * mv * accelm
                 vy  = -S(-Rl) * mv * accelm
@@ -1797,7 +1873,7 @@
               oZv -= vz
             }else if(elevation == 0 || jumpTimer<=t && hasTraction){
               jumpvv -= jumpHeight * (1+accelm/2)
-              keys[32] = false
+              keys[27] = false
               jumpTimer = t+.25
             }
           }
@@ -1806,7 +1882,7 @@
             Players.map((AI, idx)=>{
               if(AI.alive){
                 AI.accelr = AI.accelm = 1
-                if(AI.keys[16]){
+                if(AI.keys[15]){
                   AI.accelm = 2.125
                   AI.accelr = 1.5
                 }
@@ -1814,18 +1890,18 @@
                 AI.mv    = AI.flymode ? 5 : 2.5
                 AI.keys.map((key, i)=>{
                   if(key) switch(i){
-                    case 65: AIakey(idx); break
-                    case 87: AIwkey(idx); break
-                    case 68: AIdkey(idx); break
-                    case 83: Playerskey(idx); break
-                    case 32: Playerspacebar(idx); break
-                    case 37: AIleft(idx); break
-                    case 38: AIup(idx); break
-                    case 39: AIright(idx); break
-                    case 40: AIdown(idx); break
-                    case 17: PlayerCtrl(idx); break
-                    case 33: AIpgup(idx); break
-                    case 34: AIpgdn(idx); break
+                    case 10: AIakey(idx); break
+                    case 11: AIwkey(idx); break
+                    case 12: AIdkey(idx); break
+                    case 13: Playerskey(idx); break
+                    case 27: Playerspacebar(idx); break
+                    case 23: AIleft(idx); break
+                    case 24: AIup(idx); break
+                    case 25: AIright(idx); break
+                    case 26: AIdown(idx); break
+                    case 16: PlayerCtrl(idx); break
+                    case 28: AIpgup(idx); break
+                    case 29: AIpgdn(idx); break
                   }
                 })
               }
@@ -1834,45 +1910,34 @@
           
           doKeys = () => {
             accelr = accelm = 1
-            if(keys[16]){
+            if(keys[15]){
               accelm = 2.125
               accelr = 1.5
             }
             keys.map((key, i)=>{
               if(key) switch(i){
-                case 48: camselected=0; break
-                /*
-                case 49: if(cams.length>0) camTgtIdx=1; break
-                case 50: if(cams.length>1) camTgtIdx=2; break
-                case 51: if(cams.length>2) camTgtIdx=3; break
-                case 52: if(cams.length>3) camTgtIdx=4; break
-                case 53: if(cams.length>4) camTgtIdx=5; break
-                case 54: if(cams.length>5) camTgtIdx=6; break
-                case 55: if(cams.length>6) camTgtIdx=7; break
-                case 56: if(cams.length>7) camTgtIdx=8; break
-                case 57: if(cams.length>8) camTgtIdx=9; break
-                */
-                case 49: if(cams.length>0) camselected=1; break
-                case 50: if(cams.length>1) camselected=2; break
-                case 51: if(cams.length>2) camselected=3; break
-                case 52: if(cams.length>3) camselected=4; break
-                case 53: if(cams.length>4) camselected=5; break
-                case 54: if(cams.length>5) camselected=6; break
-                case 55: if(cams.length>6) camselected=7; break
-                case 56: if(cams.length>7) camselected=8; break
-                case 57: if(cams.length>8) camselected=9; break
-                case 65: akey(); break
-                case 87: wkey(); break
-                case 68: dkey(); break
-                case 83: skey(); break
-                case 32: spacebar(); break
-                case 37: left(); break
-                case 38: up(); break
-                case 39: right(); break
-                case 40: down(); break
-                case 17: ctrl(); break
-                case 33: pgup(); break
-                case 34: pgdn(); break
+                case 0: camselected=0; break
+                case 1: if(cams.length>0) camselected=1; break
+                case 2: if(cams.length>1) camselected=2; break
+                case 3: if(cams.length>2) camselected=3; break
+                case 4: if(cams.length>3) camselected=4; break
+                case 5: if(cams.length>4) camselected=5; break
+                case 6: if(cams.length>5) camselected=6; break
+                case 7: if(cams.length>6) camselected=7; break
+                case 8: if(cams.length>7) camselected=8; break
+                case 9: if(cams.length>8) camselected=9; break
+                case 10: akey(); break
+                case 11: wkey(); break
+                case 12: dkey(); break
+                case 13: skey(); break
+                case 27: spacebar(); break
+                case 23: left(); break
+                case 24: up(); break
+                case 25: right(); break
+                case 26: down(); break
+                case 16: ctrl(); break
+                case 28: pgup(); break
+                case 29: pgdn(); break
               }
             })
           }
@@ -1978,9 +2043,9 @@
                     b*=camFollowDist
                     e*=camFollowDist
                     l = Math.max(0,i-1)
-                    tgx = Players[l].oX
-                    tgy = Players[l].oY
-                    tgz = Players[l].oZ
+                    tgx = Players[l+1].oX
+                    tgy = Players[l+1].oY
+                    tgz = Players[l+1].oZ
                     X1 += ((-tgx+a) - X1)/50
                     Y1 += ((-tgy-camFollowDist/3) - Y1)/25
                     Z1 += ((-tgz+e) - Z1)/50
@@ -2684,11 +2749,16 @@
           processPlayers = (AI=false, idx) => {
             
             if(AI){
-              
+
               AI = Players[idx]
-              AI.Rl += AI.Rlv
-              AI.Pt += AI.Ptv
-              AI.Yw += AI.Ywv
+              if(+AI.playerData.id == +userID) return
+              AI.Rl += (AI.tRl - AI.Rl) * lerpFactor
+              AI.Pt += (AI.tPt - AI.Pt) * lerpFactor
+              AI.Yw += (AI.tYw - AI.Yw) * lerpFactor
+
+              //AI.Rl += AI.Rlv
+              //AI.Pt += AI.Ptv
+              //AI.Yw += AI.Ywv
               if(AI.Pt>Math.PI/2){
                 AI.Pt = Math.PI/2
                 AI.Ptv = 0
@@ -2725,12 +2795,15 @@
               if(AI.grounded){
                 AI.jumpv = AI.jumpvv = 0
               }
-              if(!AI.grounded && !AI.flymode) AI.jumpvv-=grav
+              //if(!AI.grounded && !AI.flymode) AI.jumpvv-=grav
               if(AI.oY-AI.fl<-200) fallingDeath(true, idx)
 
-              AI.oX += AI.oXv
+              AI.oX += (AI.toX - AI.oX) * lerpFactor
+              AI.oY += (AI.toY - AI.oY) * lerpFactor / 5
+              AI.oZ += (AI.toZ - AI.oZ) * lerpFactor
+              //AI.oX += AI.oXv
               AI.oY += AI.oYv
-              AI.oZ += AI.oZv
+              //AI.oZ += AI.oZv
               AI.fl = -floor(-AI.oX,-AI.oZ,-AI.oX,-AI.oZ)
               
               X1 = -AI.oX
@@ -2750,16 +2823,6 @@
                   }
                 }
               })
-              
-              switch(AI.behavior){
-                case 0: // collection
-                break
-                case 1: // offense
-                break
-                case 2: // defense
-                break
-              }
-              
             }else{
               Rl += Rlv
               Pt += Ptv
@@ -2883,6 +2946,9 @@
               case cams.length: // player view
               
                 processPlayers()
+                Players.map((AI, idx) => {
+                  processPlayers(true, idx)
+                })
                 
               break
               default: // cameras
@@ -3216,6 +3282,7 @@
                           visited[midx[1]][1] = d_
                           if(!visited[midx[1]][0] && d_<24){
                             visited[midx[1]][0]=true
+                            collected[midx[1]] = '1'
                             orbsCollected++
                             spawnFlash(X,Y+16,Z)
                           }
@@ -3269,13 +3336,7 @@
                 Z = kz
                 Y1 = (Y = floor(X,Z,lx_=X,lz_=Z)-7.5)-2+7.5
                 d_=Math.hypot(X+oX, (Y+oY)/4, Z+oZ)
-                //visited[midx[1]][1] /= 1.02
-                //needsRender = false
-                //visited[midx[1]][1] /= 1.02
                 if(d_<renderDist*10){
-                  //needsRender  = visited[midx[1]][1] < .1
-                  //visited[midx[1]][1] = .5 / (1+(1+d_)**8/1e16)
-                
                   ky = ly = floor(lx,lz,lx,lz) + (((k/pcl|0)%prw)-prw/2+.5)*ksp
                   lx_ = kx * .988
                   lz_ = kz * .988
@@ -3471,6 +3532,7 @@
                   if((d_=Math.hypot(X+oX, (Y+oY)/4, Z+oZ))<renderDist*10){
                     if(!visited[midx[1]][0] && d_<24){
                       visited[midx[1]][0]=true
+                      collected[midx[1]] = '1'
                       orbsCollected++
                       spawnFlash(X,Y+16,Z)
                     }
@@ -3834,12 +3896,18 @@
               }
 
               if(!showMenu){
+                if(playerName){
+                  camBufferCtx.fillStyle = '#0fc'
+                  camBufferCtx.font = (fs=20)+'px Courier Prime'
+                  camBufferCtx.textAlign = 'center'
+                  camBufferCtx.fillText('player: ' + playerName, c.width/2-50, fs/1.33)
+                }
                 if(objectiveTimer>t){
                   camBufferCtx.globalAlpha = Math.min(1,objectiveTimer-t)
                   camBufferCtx.fillStyle = '#0fc'
                   camBufferCtx.font = (fs=20)+'px Courier Prime'
                   camBufferCtx.textAlign = 'center'
-                  camBufferCtx.fillText(objectiveText, c.width/2-50, fs/1.33)
+                  camBufferCtx.fillText(objectiveText, c.width/2-50, fs+fs/1.33)
                   camBufferCtx.globalAlpha = 1
                 }
               
@@ -3896,7 +3964,7 @@
           
           if(!((t*60|0)%0)) {
             Players.map((AI,idx)=>{
-              if(+AI.playerData.id == userID) return
+              if(+AI.playerData.id == +userID) return
               ob2 = 0
               if(AI.mobile){
                 base_mind = 6e6
@@ -3963,33 +4031,33 @@
                   }
                 }
               
-                AI.keys[37] = AI.keys[38] = AI.keys[39] = AI.keys[40] = false
+                AI.keys[keymap[37]] = AI.keys[keymap[38]] = AI.keys[keymap[39]] = AI.keys[keymap[40]] = false
                 if(AI.Pt - p2>0+.1){
-                  AI.keys[40] = true
+                  AI.keys[keymap[40]] = true
                 }
                 if(AI.Pt - p2<0-.1){
-                  AI.keys[38] = true
+                  AI.keys[keymap[38]] = true
                 }
                 if(AI.Yw - p1>0+.05){
-                  AI.keys[39] = true
+                  AI.keys[keymap[39]] = true
                 }
                 if(AI.Yw - p1<0-.05){
-                  AI.keys[37] = true
+                  AI.keys[keymap[37]] = true
                 }
                 
                 d1 = Math.hypot(btx_-X1,btz_-Z1)
                 d2 = Math.hypot(btx_-X2,btz_-Z2)
-                AI.keys[32] = false
-                //if(Rn()<.5)  AI.keys[17] = false
-                AI.keys[87] = false
-                //if(Rn()<.1) AI.keys[17] = true
+                AI.keys[keymap[32]] = false
+                //if(Rn()<.5)  AI.keys[keymap[17]] = false
+                AI.keys[keymap[87]] = false
+                //if(Rn()<.1) AI.keys[keymap[17]] = true
                 if(AI.hasTraction){
-                  if(Rn()<.1) AI.keys[16] = false
-                  if(Math.abs(AI.Yw - p1) < .1) AI.keys[87] = true
-                  if(AI.keys[87]){
-                    if(bty+6>bty_) AI.keys[16] = true
-                    if(!AI.keys[16] && d2>d1 && d1 > 15) {
-                      AI.keys[32] = true
+                  if(Rn()<.1) AI.keys[keymap[16]] = false
+                  if(Math.abs(AI.Yw - p1) < .1) AI.keys[keymap[87]] = true
+                  if(AI.keys[keymap[87]]){
+                    if(bty+6>bty_) AI.keys[keymap[16]] = true
+                    if(!AI.keys[keymap[16]] && d2>d1 && d1 > 15) {
+                      AI.keys[keymap[32]] = true
                     }
                   }
                 }
@@ -4070,6 +4138,14 @@
               individualPlayerData['time'] = AI.playerData.time
               if(typeof flymode != 'undefined') individualPlayerData['flymode'] = flymode
               if(typeof keys != 'undefined') individualPlayerData['keys'] = keys
+              if(typeof score != 'undefined') individualPlayerData['score'] = score
+              if(typeof oX != 'undefined') individualPlayerData['oX'] = oX
+              if(typeof oZ != 'undefined') individualPlayerData['oZ'] = oZ
+              if(typeof oY != 'undefined') individualPlayerData['oY'] = oY
+              //if(typeof Rl != 'undefined') individualPlayerData['Rl'] = Rl
+              if(typeof Pt != 'undefined') individualPlayerData['Pt'] = Pt
+              if(typeof Yw != 'undefined') individualPlayerData['Yw'] = Yw
+              if(typeof health != 'undefined') individualPlayerData['health'] = health
               //if(typeof lx != 'undefined') individualPlayerData['jumpv'] = jumpv
               //if(typeof ly != 'undefined') individualPlayerData['lx'] = lx
               //if(typeof ly != 'undefined') individualPlayerData['ly'] = ly
@@ -4080,20 +4156,12 @@
               //if(typeof kx != 'undefined') individualPlayerData['kx'] = kx
               //if(typeof ky != 'undefined') individualPlayerData['ky'] = ky
               //if(typeof kz != 'undefined') individualPlayerData['kz'] = kz
-              if(typeof health != 'undefined') individualPlayerData['health'] = health
               //if(typeof oXv != 'undefined') individualPlayerData['oXv'] = oXv
               //if(typeof oYv != 'undefined') individualPlayerData['oYv'] = oYv
               //if(typeof oZv != 'undefined') individualPlayerData['oZv'] = oZv
               //if(typeof Rlv != 'undefined') individualPlayerData['Rlv'] = Rlv
               //if(typeof Ptv != 'undefined') individualPlayerData['Ptv'] = Ptv
               //if(typeof Ywv != 'undefined') individualPlayerData['Ywv'] = Ywv
-              if(typeof score != 'undefined') individualPlayerData['score'] = oX
-              if(typeof oX != 'undefined') individualPlayerData['oX'] = oX
-              if(typeof oZ != 'undefined') individualPlayerData['oZ'] = oZ
-              if(typeof oY != 'undefined') individualPlayerData['oY'] = oY
-              if(typeof Rl != 'undefined') individualPlayerData['Rl'] = Rl
-              if(typeof Pt != 'undefined') individualPlayerData['Pt'] = Pt
-              if(typeof Yw != 'undefined') individualPlayerData['Yw'] = Yw
               //if(typeof jumpTimer != 'undefined') individualPlayerData['jumpTimer'] = jumpTimer
               //if(typeof playerShotTimer != 'undefined') individualPlayerData['playerShotTimer'] = playerShotTimer
               //if(typeof elevation != 'undefined') individualPlayerData['elevation'] = elevation
@@ -4106,7 +4174,14 @@
               if(AI.playerData?.id){
                 el = users.filter(v=>+v.id == +AI.playerData.id)[0]
                 Object.entries(AI).forEach(([key,val]) => {
-                  if(typeof el[key] != 'undefined') AI[key] = el[key]
+                  switch(key){
+                    case 'oX': if(typeof el[key] != 'undefined') AI.toX = el[key]; break;
+                    case 'oY': if(typeof el[key] != 'undefined') AI.toY = el[key]; break;
+                    case 'oZ': if(typeof el[key] != 'undefined') AI.toZ = el[key]; break;
+                    case 'Rl': if(typeof el[key] != 'undefined') AI.tRl = el[key]; break;
+                    case 'Pt': if(typeof el[key] != 'undefined') AI.tPt = el[key]; break;
+                    case 'Yw': if(typeof el[key] != 'undefined') AI.tYw = el[key]; break;
+                  }
                 })
               }
             }
@@ -4114,7 +4189,8 @@
         }
       }
 
-      playerData           = []
+      recData           = []
+      collected            = []
       users                = []
       userID               = ''
       gameConnected        = false
@@ -4126,7 +4202,8 @@
         let sendData = {
           gameID,
           userID,
-          individualPlayerData
+          individualPlayerData,
+          collected
         }
         //console.log('sendData', sendData)
         fetch('sync.php',{
@@ -4136,28 +4213,33 @@
           },
           body: JSON.stringify(sendData),
         }).then(res=>res.json()).then(data=>{
-          //console.log('data rec:', data)
           if(data[0]){
-            playerData = data[1]
+            recData = data[1]
             if(data[3] && userID != gmid){
-              individualPlayerData = playerData.players[data[3]]
+              individualPlayerData = recData.players[data[3]]
             }
             users = []
-            Object.entries(playerData.players).forEach(([key,val]) => {
+            Object.entries(recData.players).forEach(([key,val]) => {
               val.id = key
               users = [...users, val]
             })
-            //console.log('users', users)
+            
+            for(let i = recData.collected.length; i--;){
+              if(recData.collected[i] === '1'){
+                collected[i] = '1'
+                if(typeof visited != 'undefined') visited[i][0] = true
+              }
+            }
             syncPlayerData(users)
             
-            if(userID) playerName = playerData.players[data[3]]['name']
+            if(userID) playerName = recData.players[data[3]]['name']
             if(data[2]){ //needs reg
               //console.log('needs reg')
               regFrame.style.display = 'block'
               regFrame.src = `reg.php?g=${gameSlug}&gmid=${gmid}` 
             }else{
               if(!gameConnected){
-                setInterval(()=>{sync()}, 500)
+                setInterval(()=>{sync()}, pollFreq = 500)  //ms
                 //console.log('game connected')
                 gameConnected = true
               }
