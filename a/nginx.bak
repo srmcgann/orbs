@@ -1,0 +1,6 @@
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name fx.cantelope.org;
+    return 301 $scheme://fx.cantelope.org/index.php?i=$request_uri;
+}
