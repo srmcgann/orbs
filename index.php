@@ -183,23 +183,26 @@
                
                
           begin = () => {
-            let sendData = {
-              userName
-            }
-            fetch('createGame.php',{
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(sendData),
-            }).then(res=>res.json()).then(data=>{
-              console.log(data)
-              if(data[0]){
-                location.href = `Δ/?g=${data[1]}&gmid=${data[3]}&p=${data[3]}`
-              }else{
-                console.log('error! crap')
+            if(userName.length && userName.split('').filter(v=>v.charCodeAt(0)!=32).join('').length){
+              userName = userName.split('').filter((v,i)=>i<10).join('')
+              let sendData = {
+                userName
               }
-            })
+              fetch('createGame.php',{
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(sendData),
+              }).then(res=>res.json()).then(data=>{
+                console.log(data)
+                if(data[0]){
+                  location.href = `Δ/?g=${data[1]}&gmid=${data[3]}&p=${data[3]}`
+                }else{
+                  console.log('error! crap')
+                }
+              })
+            }
           }
           
           mx = my = 0
