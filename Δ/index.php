@@ -1348,7 +1348,7 @@
             cams             = []
             oldCams          = []
             iCamsc           = 0
-            lerpFactor       = 1/10//1000/pollFreq/60
+            lerpFactor       = 1/5  //bigger val is faster tracking
             firstRun         = true
             camLength        = -10
             camFollowDist    = 150
@@ -2001,12 +2001,12 @@
           
           loadCams = () => {
             if(!firstRun) oldCams = JSON.parse(JSON.stringify(cams))
-            let clen = Players.length
             cams = []
-            Array(clen).fill().map((v,i) => {
+            let nm
+            Array(iCamsc).fill().map((v,i) => {
               ls = camFollowDist
               if(firstRun || i>oldCams.length-1){
-                X1 = S(p1=Math.PI*2/clen*i+Math.PI/2 + Math.PI) * ls
+                X1 = S(p1=Math.PI*2/iCamsc*i+Math.PI/2 + Math.PI) * ls
                 Y1 = -50
                 Z1 = C(p1) * ls
               } else {
@@ -2016,7 +2016,7 @@
               }
               switch(i){
                 case 0:
-                  a = S(p=Math.PI*2/clen*i+t) * camFollowDist/1.5
+                  a = S(p=Math.PI*2/iCamsc*i+t) * camFollowDist/1.5
                   e = C(p) * camFollowDist/1.5
                   d = Math.hypot(a,b=Y1-(-oY-camFollowDist/3),e)
                   a/=d
@@ -2033,7 +2033,7 @@
                   break
                 default:
                   if(PlayerCount>0){
-                    a = S(p=Math.PI*2/clen*i+t) * camFollowDist/1.5
+                    a = S(p=Math.PI*2/iCamsc*i+t) * camFollowDist/1.5
                     e = C(p) * camFollowDist/1.5
                     d = Math.hypot(a,b=Y1-(-oY-camFollowDist/3),e)
                     a/=d
@@ -2042,10 +2042,10 @@
                     a*=camFollowDist
                     b*=camFollowDist
                     e*=camFollowDist
-                    l = Math.max(0,i-1)
-                    tgx = Players[l+1].oX
-                    tgy = Players[l+1].oY
-                    tgz = Players[l+1].oZ
+                    l = (i+ofidx)%Players.length//Math.max(0,i-1)
+                    tgx = Players[l].oX
+                    tgy = Players[l].oY
+                    tgz = Players[l].oZ
                     X1 += ((-tgx+a) - X1)/50
                     Y1 += ((-tgy-camFollowDist/3) - Y1)/25
                     Z1 += ((-tgz+e) - Z1)/50
@@ -2061,11 +2061,11 @@
               camBuffer.width = c.width
               camBuffer.height = c.height
               let camBufferCtx = camBuffer.getContext('2d')
-              cams = [...cams, [X1, Y1, Z1, 0, p2, -p1, camBuffer, camBufferCtx, X2, Y2, Z2, Players[cams.length]?.playerData.name]]
+              nm = Players[(i+ofidx)%Players.length]?.playerData?.name
+              cams = [...cams, [X1, Y1, Z1, 0, p2, -p1, camBuffer, camBufferCtx, X2, Y2, Z2, nm]]
             })
             firstRun = false
           }
-          //loadCams()
           
           renderButton = (text, X, Y, callback, typ='rectangle', col1='#0ff8', col2='#2088') => {
             x.beginPath()
@@ -2799,10 +2799,10 @@
               if(AI.oY-AI.fl<-200) fallingDeath(true, idx)
 
               AI.oX += (AI.toX - AI.oX) * lerpFactor
-              AI.oY += (AI.toY - AI.oY) * lerpFactor / 5
+              AI.oY += (AI.toY - AI.oY) * lerpFactor // 5
               AI.oZ += (AI.toZ - AI.oZ) * lerpFactor
               //AI.oX += AI.oXv
-              AI.oY += AI.oYv
+              //AI.oY += AI.oYv
               //AI.oZ += AI.oZv
               AI.fl = -floor(-AI.oX,-AI.oZ,-AI.oX,-AI.oZ)
               
@@ -3914,7 +3914,7 @@
                 if(showScores){
                   let scores = []
                   Players.map((AI, idx) => {
-                    scores = [...scores, [`${AI.playerData.name}: `, AI.score]]
+                    scores = [...scores, [`${AI.playerData.name}: `, AI.playerData.id == userID ? orbsCollected : AI.score+1]]
                   })
                   //scores = [...scores, [playerName + ': ', orbsCollected]]
                   
@@ -4138,7 +4138,6 @@
               individualPlayerData['time'] = AI.playerData.time
               if(typeof flymode != 'undefined') individualPlayerData['flymode'] = flymode
               if(typeof keys != 'undefined') individualPlayerData['keys'] = keys
-              if(typeof score != 'undefined') individualPlayerData['score'] = score
               if(typeof oX != 'undefined') individualPlayerData['oX'] = oX
               if(typeof oZ != 'undefined') individualPlayerData['oZ'] = oZ
               if(typeof oY != 'undefined') individualPlayerData['oY'] = oY
@@ -4146,6 +4145,7 @@
               if(typeof Pt != 'undefined') individualPlayerData['Pt'] = Pt
               if(typeof Yw != 'undefined') individualPlayerData['Yw'] = Yw
               if(typeof health != 'undefined') individualPlayerData['health'] = health
+              if(typeof score != 'undefined') individualPlayerData['score'] = orbsCollected
               //if(typeof lx != 'undefined') individualPlayerData['jumpv'] = jumpv
               //if(typeof ly != 'undefined') individualPlayerData['lx'] = lx
               //if(typeof ly != 'undefined') individualPlayerData['ly'] = ly
@@ -4170,11 +4170,24 @@
               //if(typeof based != 'undefined') individualPlayerData['based'] = based
               //if(typeof alive != 'undefined') individualPlayerData['alive'] = alive
               //if(typeof fl != 'undefined') individualPlayerData['fl'] = fl
+              if(AI.playerData?.id){
+                el = users.filter(v=>+v.id == +AI.playerData.id)[0]
+                Object.entries(AI).forEach(([key,val]) => {
+                  switch(key){
+                    case 'score': if(typeof el[key] != 'undefined'){
+                      orbsCollected = Math.max(orbsCollected, el[key])
+                    }
+                    break;
+                  }
+                })
+              }
             }else{
               if(AI.playerData?.id){
                 el = users.filter(v=>+v.id == +AI.playerData.id)[0]
                 Object.entries(AI).forEach(([key,val]) => {
                   switch(key){
+                    case 'keys': if(typeof el[key] != 'undefined') AI.keys = el[key]; break;
+                    case 'score': if(typeof el[key] != 'undefined') AI.score = el[key]; break;
                     case 'oX': if(typeof el[key] != 'undefined') AI.toX = el[key]; break;
                     case 'oY': if(typeof el[key] != 'undefined') AI.toY = el[key]; break;
                     case 'oZ': if(typeof el[key] != 'undefined') AI.toZ = el[key]; break;
@@ -4186,10 +4199,12 @@
               }
             }
           })
+          for(i=0;i<Players.length;i++) if(Players[i]?.playerData?.id == userID) ofidx = i
         }
       }
 
-      recData           = []
+      recData              = []
+      ofidx                = 0
       collected            = []
       users                = []
       userID               = ''
@@ -4239,7 +4254,7 @@
               regFrame.src = `reg.php?g=${gameSlug}&gmid=${gmid}` 
             }else{
               if(!gameConnected){
-                setInterval(()=>{sync()}, pollFreq = 500)  //ms
+                setInterval(()=>{sync()}, pollFreq = 333)  //ms
                 //console.log('game connected')
                 gameConnected = true
               }
