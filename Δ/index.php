@@ -4367,7 +4367,7 @@
               regFrame.src = `reg.php?g=${gameSlug}&gmid=${gmid}` 
             }else{
               if(!gameConnected){
-                setInterval(()=>{sync()}, pollFreq = 4000)  //ms
+                setInterval(()=>{sync()}, pollFreq = 333)  //ms
                 //console.log('game connected')
                 gameConnected = true
               }
