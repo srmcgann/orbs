@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta name="viewport" content="width=720">
-    <meta property="og:url" content="http://fx.cantelope.org/about"/>
+    <meta property="og:url" content="http://efefx.cantelope.org/about"/>
     <meta property="og:type" content="website"/>
     <meta property="og:title" content="about whitehot robot"/>
     <meta property="og:description" content="about whitehot robot"/>
@@ -113,7 +113,7 @@
         
         <div class="linkbox">
           <!-- <a href="http://whitehotrobot.com" target="_blank">jukebox (playlists & compiled videos)</a><br> -->
-          <a href="http://fx.cantelope.org" target="_blank">demos / code with videos</a><br>
+          <a href="http://efefx.cantelope.org" target="_blank">demos / code with videos</a><br>
           <a href="http://audiocloud.cantelope.org" target="_blank">audiocloud (music library)</a><br>
           <a href="http://games.cantelope.org" target="_blank">free browser games by the user-community</a><br>
           <!-- <a href="http://email.whitehotrobot.com" target="_blank">free email - communication for the masses!</a><br> -->

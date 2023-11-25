@@ -1280,6 +1280,7 @@
           PlayerInit = idx => { // called initially & when a player dies
             Players[idx].flymode          = false
             Players[idx].keys             = Array(30).fill(0)
+            Players[idx].mbutton          = Array(3).fill(false)
             Players[idx].orbs             = []
             Players[idx].bases            = []
             Players[idx].mobile           = false
@@ -1346,12 +1347,16 @@
           
           masterInit = () => { // called only initially
             cams             = []
+            buttons          = []
             oldCams          = []
+            hov              = false
+            pointerLocked    = false
             iCamsc           = 0
-            lerpFactor       = 1/5  //bigger val is faster tracking
+            buttonsLoaded    = false
+            lerpFactor       = 1/10  //bigger val is faster tracking
             firstRun         = true
             camLength        = -10
-            camFollowDist    = 150
+            camFollowDist    = 166
             PlayerCount      = 0
             Players          = []
             camselected      = 0
@@ -1428,13 +1433,14 @@
                                  PGDN   = 29 / 34
                                */
             keys             = Array(30).fill(0)
+            mbutton          = Array(3).fill(false)
             camMainScreen    = false
             showScores       = true
             playerSize       = 20
             camTgtIdx        = 0
             bulletDamage     = .1
             showcameras      = false
-            showstars        = false
+            showstars        = true
             showCamThumbs    = false
             showMenu         = false
             showTopo         = false
@@ -1443,7 +1449,7 @@
             showCrosshair    = true
             showSkybox       = false
             visited          = Array(1e4).fill().map(v=>[false, alpha]) // env prop
-            orbsCollected    = 0
+            score    = 0
             camsPersistent   = Array(iCamsc).fill().map(v=>{
               /* indices
               // 0 = shotTimer [float]
@@ -1617,18 +1623,32 @@
             AI = Players[idx]
             shoot(true, idx)
           }
-
-          mx=my=0
-          c.onmousemove = e => {
-            Ywv -= rv * accelr * e.movementX/9
-            Ptv -= rv * accelr * e.movementY/9
+          
+          document.onpointerlockchange = e => {
+            pointerLocked = document.pointerLockElement == c
           }
           
-          mbutton = Array(3).fill(false)
+          mx=my=0
+          c.onmousemove = e => {
+            hov = false
+            if(pointerLocked){
+              Ywv -= rv * accelr * e.movementX/9
+              Ptv -= rv * accelr * e.movementY/9
+            }else{
+              rect = c.getBoundingClientRect()
+              mx = (e.pageX-rect.x)/c.clientWidth*c.width
+              my = (e.pageY-rect.y)/c.clientHeight*c.height
+              buttons.map(button=>{
+                if(button.hover){
+                  hov = true
+                }
+              })
+            }
+          }
+          
           c.onmouseup = e => {
             e.preventDefault()
             e.stopPropagation()
-            c.requestPointerLock()
             c.focus()
             mbutton[e.button] = false
           }
@@ -1638,16 +1658,35 @@
             e.stopPropagation()
             //c.requestFullscreen()
             mbutton[e.button] = true
+
+            let hov = false
+            if(!pointerLocked){
+              if(e.button == 0){
+                buttons.map(button=>{
+                  if(button.hover){
+                    hov = true
+                    if(button.visible) eval(button.callback)
+                  }
+                })
+              }
+            }
+            if(!hov) c.requestPointerLock()
           }
           //c.focus()
           
           c.onkeydown = e => {
             e.preventDefault()
             e.stopPropagation()
+            keys[keymap[e.keyCode]] = 1
+          }
+          c.onkeyup = e => {
+            e.preventDefault()
+            e.stopPropagation()
+            keys[keymap[e.keyCode]] = ''
             switch(e.keyCode){
               case 80: showTopo=!showTopo; break
               case 70: flymode=!flymode; break
-              case 76: camMainScreen = !camMainScreen; if(camMainScreen && cams.length>1) camselected = 2;  break
+              //case 76: camMainScreen = !camMainScreen; if(camMainScreen && cams.length>1) camselected = 2;  break
               case 9:
                 paused=!paused;
                 if(!paused) ot=-1
@@ -1655,16 +1694,9 @@
               case 66: showCamThumbs=!showCamThumbs; break
               case 67: showcameras=!showcameras; break
               case 84: showCrosshair=!showCrosshair; break
-              case 77: showMenu=!showMenu; break
+              case 77: toggleMenu(); break
+              case 27: if(showMenu && !paused) setTimeout(()=>{toggleMenu()},0); break
             }
-            keys[keymap[e.keyCode]] = 1
-            //console.log('keys',keys)
-            //console.log('keymap',keymap)
-          }
-          c.onkeyup = e => {
-            e.preventDefault()
-            e.stopPropagation()
-            keys[keymap[e.keyCode]] = ''
           }
           left = () =>{
             if(keys[17]){
@@ -1854,12 +1886,20 @@
               oYv += vy
               oZv += vz
             }else{
-              shoot(false, -1)
+              if(!hov){
+                shoot(false, -1)
+                if(!pointerLocked){
+                  keys[18] = mbutton[0] = false
+                }
+              }
             }
           }
           
           ctrl = () =>{
             shoot(false, -1)
+            if(!pointerLocked){
+              keys[18] = mbutton[0] = false
+            }
           }
 
           jumpTimer = 0
@@ -1904,6 +1944,7 @@
                     case 29: AIpgdn(idx); break
                   }
                 })
+                if(AI.mbutton[0]) PlayerCtrl(idx)
               }
             })
           }
@@ -2007,7 +2048,7 @@
               ls = camFollowDist
               if(firstRun || i>oldCams.length-1){
                 X1 = S(p1=Math.PI*2/iCamsc*i+Math.PI/2 + Math.PI) * ls
-                Y1 = -50
+                Y1 = -25
                 Z1 = C(p1) * ls
               } else {
                 X1 = oldCams[i][0]
@@ -2067,31 +2108,63 @@
             firstRun = false
           }
           
-          renderButton = (text, X, Y, callback, typ='rectangle', col1='#0ff8', col2='#2088') => {
-            x.beginPath()
-            x.fillStyle = '#4f8c'
-            let fs = 9
+          renderButton = (text, X, Y, tooltip = '', callback='', typ='rectangle', col1='#0ff8', col2='#2088', fs=9) => {
+            render = (menux>-menuWidth && tooltip!= 'show menu') || tooltip == 'copy game link' || (menux<0 && tooltip == 'show menu')
+            if(render) {
+              x.beginPath()
+              x.fillStyle = '#4f8c'
+            }
             x.font = fs + 'px Courier Prime'
             let margin = 2
             let w = x.measureText(text).width + margin*2
             let h = fs + margin*2
-            switch(typ){
-              case 'rectangle':
-                x.lineTo(X-w/2,Y-h/2)
-                x.lineTo(X+w/2,Y-h/2)
-                x.lineTo(X+w/2,Y+h/2)
-                x.lineTo(X-w/2,Y+h/2)
-              break
-              case 'circle':
-              break
+            X1=X-w/2,Y1=Y-h/2
+            if(render || !buttonsLoaded){
+              if(render){
+                switch(typ){
+                  case 'rectangle':
+                    x.lineTo(X1,Y1)
+                    x.lineTo(X+w/2,Y-h/2)
+                    x.lineTo(X+w/2,Y+h/2)
+                    x.lineTo(X-w/2,Y+h/2)
+                  break
+                  case 'circle':
+                  break
+                }
+                Z = 30
+                stroke(col1, col2, 1, true)
+              }
+              
+              X2=X1+w
+              Y2=Y1+h
+              if(mx>X1 && mx<X2 && my>Y1 && my<Y2){
+                if(buttonsLoaded){
+                  buttons[bct].hover = true
+                }else{
+                  buttons=[...buttons, {callback,X1,Y1,X2,Y2,hover:true,tooltip,visible: false}]
+                }
+                c.style.cursor = 'pointer'
+              }else{
+                if(buttonsLoaded){
+                  buttons[bct].hover = false
+                }else{
+                  buttons=[...buttons, {callback,X1,Y1,X2,Y2,hover:false,tooltip,visible: false}]
+                }
+              }
             }
-            Z = 30
-            stroke(col1, col2, 1, true)
-            ota = x.textAlign
-            x.textAlign = 'center'
-            x.fillStyle = '#fff'
-            x.fillText(text, X, Y+fs/3.2)
-            x.textAlign = ota
+            if(render){
+              ota = x.textAlign
+              x.textAlign = 'center'
+              x.fillStyle = '#fff'
+              x.fillText(text, X, Y+fs/3.2)
+              x.textAlign = ota
+            }
+            if(render){
+              buttons[bct].visible = true
+            }else{
+              buttons[bct].visible = false
+            }
+            bct++
           }
 
           menuWidth = 150
@@ -2128,32 +2201,35 @@
             
             X = menuWidth+menux+10
             Y = 40
-            if(menux>-menuWidth){
-              renderButton('<<', X, Y, 'toggleMenu')
-              X = menux+75
-              Y=12
-              renderButton('pause / unpause    [tab]', X, Y+=16, 'toggleMenu')
-              renderButton('menu                 [m]', X, Y+=16, 'toggleMenu')
-              renderButton('look    [arrows / mouse]', X, Y+=16, 'toggleMenu')
-              renderButton('move              [WASD]', X, Y+=16, 'toggleMenu')
-              renderButton('choose cam    [num keys]', X, Y+=16, 'toggleMenu')
-              renderButton('restore player view  [0]', X, Y+=16, 'toggleMenu')
-              renderButton('jump  [space/rightMouse]', X, Y+=16, 'toggleMenu')
-              renderButton('shoot   [ctrl/leftMouse]', X, Y+=16, 'toggleMenu')
-              renderButton('show/hide cam thumbs [b]', X, Y+=16, 'toggleMenu')
-              renderButton('topo map thumb       [P]', X, Y+=16, 'toggleMenu')
-              renderButton('flymode              [f]', X, Y+=16, 'toggleMenu')
-              renderButton('show/hide crosshair  [t]', X, Y+=16, 'toggleMenu')
-              renderButton('show/hide cam rflctn.[c]', X, Y+=11, 'toggleMenu')
-              renderButton('strafe         [alt+l/r]', X, Y+=16, 'toggleMenu')
-              /*
-              x.font = '10px Courier Prime'
-              x.fillStyle = '#4fa'
-              x.fillText('fly mode (if active)', menux+7, Y+=20)
-              */
-              renderButton('vertical     [pgup/pgdn]', X, Y+=16, 'toggleMenu')
-            }else{
-              renderButton('m', X, Y, 'toggleMenu')
+            bct = 0  // must appear before 1st button (for callbacks/ clickability)
+            renderButton('m', X, Y, 'show menu', 'toggleMenu()')
+            renderButton('<<', X, Y, 'close menu', 'toggleMenu()')
+            X = menux+75
+            Y = 12
+            renderButton('pause / unpause    [tab]', X, Y+=16, 'toggle paused / unpaused', 'paused=!paused')
+            renderButton('menu                 [m]', X, Y+=16, 'toggle menu', 'toggleMenu()')
+            renderButton('look    [arrows / mouse]', X, Y+=16, 'look around')
+            renderButton('move              [WASD]', X, Y+=16, 'move')
+            renderButton('choose cam    [num keys]', X, Y+=16, 'check on players')
+            renderButton('restore player view  [0]', X, Y+=16, 'default camera', 'camselected=0')
+            renderButton('jump  [space/rightMouse]', X, Y+=16, 'jump')
+            renderButton('shoot   [ctrl/leftMouse]', X, Y+=16, 'shoot')
+            renderButton('show/hide cam thumbs [b]', X, Y+=16, 'toggle camera previews')
+            renderButton('topo map thumb       [P]', X, Y+=16, 'toggle topographical map')
+            renderButton('flymode              [f]', X, Y+=16, 'toggle flight mode (zero gravity)')
+            renderButton('show/hide crosshair  [t]', X, Y+=16, 'toggle scope')
+            renderButton('show/hide cam rflctn.[c]', X, Y+=11, '[experimental]: see what cams see, on them', 'showCameras = !showCameras')
+            renderButton('strafe         [alt+l/r]', X, Y+=16, 'lateral movement, if using arrow keys')
+            renderButton('vertical     [pgup/pgdn]', X, Y+=16, 'vertical movement (only in flight mode)')
+            renderButton('🔗', 50, 15, 'copy game link', 'fullCopy()', 'rectangle', '#0ff8', '#2088', 20)
+          }
+          
+          toggleMenu = () =>{
+            showMenu = !showMenu
+            if(showMenu) {
+              if(document.pointerLockElement == c) document.exitPointerLock()
+            } else {
+              if(document.pointerLockElement != c) c.requestPointerLock()
             }
           }
           
@@ -2238,7 +2314,7 @@
                   camBufferCtx.drawImage(starImgs[6].img,l[0]-s/2/1.05,l[1]-s/2/1.05,s,s)
                   camBufferCtx.font = (fs=1e3/Z) + 'px Courier Prime'
                   camBufferCtx.fillStyle = '#4f8c'
-                  camBufferCtx.fillText(cams[camidx][11], l[0],l[1]-fs)
+                  camBufferCtx.fillText('cam: ' + cams[camidx][11], l[0],l[1]-fs)
                 }
               }
             })      
@@ -2447,24 +2523,25 @@
                 
                 //plotCam(true, idx)
                 
-                if(showCamThumbs){
+                if(showCamThumbs && camselected == 0){
+                  let ofx = -(idx/3|0) * 160
                   let margin = 5
                   camBufferCtx.globalAlpha = .85
                   camBufferCtx.textAlign = 'left'
                   camBufferCtx.strokeStyle ='#8fc4'
                   camBufferCtx.lineWidth   = 3
-                  camBufferCtx.strokeRect(c.width-150-margin/2,margin/2 + idx*(h + margin),150,h)
-                  camBufferCtx.drawImage(cam[6],c.width-150-margin/2, margin/2 + idx*(h + margin),150,h)
+                  camBufferCtx.strokeRect(ofx + c.width-150-margin/2,margin/2 + (idx%3)*(h + margin),150,h)
+                  camBufferCtx.drawImage(cam[6],ofx + c.width-150-margin/2, margin/2 + (idx%3)*(h + margin),150,h)
                   camBufferCtx.font = (fs = 12) + 'px Courier Prime'
                   camBufferCtx.fillStyle = '#fff'
-                  camBufferCtx.fillText(cam[11], c.width-150, margin/2 + idx*(h + margin)+fs/1.5)
+                  camBufferCtx.fillText(cam[11], ofx + c.width-150, margin/2 + (idx%3)*(h + margin)+fs/1.5)
                   camBufferCtx.globalAlpha = 1
                 }
-              }else{
+              }else if(!showMenu && camselected == idx+1){
                 camBufferCtx.textAlign = 'left'
                 camBufferCtx.font = (fs=20) + 'px Courier Prime'
                 camBufferCtx.fillStyle = '#4f8c'
-                camBufferCtx.fillText(cam[11],fs*2,fs)
+                camBufferCtx.fillText('player cam: '+cam[11],fs*2,fs)
               }
             })
             if(showTopo && camselected == 0){
@@ -3133,7 +3210,7 @@
                         //visited[midx[1]][1] = .5 / (1+(1+d_)**8/1e16)
                         if(!visited[midx[1]][0] && d_<24){
                           visited[midx[1]][0]=true
-                          AI.score++
+                          //AI.score++
                           spawnFlash(X,Y+16,Z)
                         }
                       }
@@ -3283,7 +3360,7 @@
                           if(!visited[midx[1]][0] && d_<24){
                             visited[midx[1]][0]=true
                             collected[midx[1]] = '1'
-                            orbsCollected++
+                            score++
                             spawnFlash(X,Y+16,Z)
                           }
                           camFunc(crl,cpt,cyw,cox,coy,coz)
@@ -3533,7 +3610,7 @@
                     if(!visited[midx[1]][0] && d_<24){
                       visited[midx[1]][0]=true
                       collected[midx[1]] = '1'
-                      orbsCollected++
+                      score++
                       spawnFlash(X,Y+16,Z)
                     }
                     camFunc(crl,cpt,cyw,cox,coy,coz)
@@ -3562,7 +3639,7 @@
 
 
             Players.map((AI, idx) => {
-              if(+AI.playerData.id == userID) return
+              if(!camselected && +AI.playerData.id == userID) return
               X = -AI.oX
               Y = -AI.oY-60
               Z = -AI.oZ
@@ -3576,7 +3653,7 @@
                   x.fillText(AI.playerData.name + ':' + (idx+1), l[0], l[1])
                 }
                 l[1]+=150/(1+Z/16)
-                if(n) x.fillText(' Σ:' + AI.score, l[0], l[1])
+                if(n) x.fillText(' Σ:' + (+AI.playerData.id == +userID ? score : AI.score), l[0], l[1])
                 hs = Math.min(1e3,4000/Z)
                 ws = hs/16
                 l[1]+=50/(1+Z/16)
@@ -3896,27 +3973,28 @@
               }
 
               if(!showMenu){
-                if(playerName){
-                  camBufferCtx.fillStyle = '#0fc'
-                  camBufferCtx.font = (fs=20)+'px Courier Prime'
-                  camBufferCtx.textAlign = 'center'
-                  camBufferCtx.fillText('player: ' + playerName, c.width/2-50, fs/1.33)
+                if(camselected == 0){
+                  if(playerName){
+                    camBufferCtx.fillStyle = '#0fc'
+                    camBufferCtx.font = (fs=20)+'px Courier Prime'
+                    camBufferCtx.textAlign = 'center'
+                    camBufferCtx.fillText('you: ' + playerName, c.width/2-50, fs/1.33)
+                  }
+                  if(objectiveTimer>t){
+                    camBufferCtx.globalAlpha = Math.min(1,objectiveTimer-t)
+                    camBufferCtx.fillStyle = '#0fc'
+                    camBufferCtx.font = (fs=20)+'px Courier Prime'
+                    camBufferCtx.textAlign = 'center'
+                    camBufferCtx.fillText(objectiveText, c.width/2-50, fs+fs/1.33)
+                    camBufferCtx.globalAlpha = 1
+                  }
                 }
-                if(objectiveTimer>t){
-                  camBufferCtx.globalAlpha = Math.min(1,objectiveTimer-t)
-                  camBufferCtx.fillStyle = '#0fc'
-                  camBufferCtx.font = (fs=20)+'px Courier Prime'
-                  camBufferCtx.textAlign = 'center'
-                  camBufferCtx.fillText(objectiveText, c.width/2-50, fs+fs/1.33)
-                  camBufferCtx.globalAlpha = 1
-                }
-              
+                
                 if(showScores){
                   let scores = []
                   Players.map((AI, idx) => {
-                    scores = [...scores, [`${AI.playerData.name}: `, AI.playerData.id == userID ? orbsCollected : AI.score+1]]
+                    scores = [...scores, [`${AI.playerData.name}: `, AI.playerData.id == userID ? score : AI.score]]
                   })
-                  //scores = [...scores, [playerName + ': ', orbsCollected]]
                   
                   scores.sort((a, b) => b[1]-a[1])
                   
@@ -4065,20 +4143,46 @@
             })
           }
           
-          //console.log('Players: ', Players)
-          
+          if(!pointerLocked){ // tooltips
+            buttons.map(button=>{
+              if(button.hover){
+                let fs
+                let margin = 4
+                camBufferCtx.font = (fs=8) + 'px Courier Prime'
+                X = mx + 5
+                let w = camBufferCtx.measureText(button.tooltip).width + margin*2
+                let h =  fs + margin * 2
+                if(X+w > c.width) w*=-1
+                if(my+h > c.height) h*=-1
+                camBufferCtx.fillStyle = '#040d'
+                camBufferCtx.fillRect(X,my,w,h)
+                camBufferCtx.fillStyle = '#0ff'
+                camBufferCtx.fillText(button.tooltip,X+(w<0?w:0)+fs/2, my+(h<0?h:0)+fs*1.333)
+              }
+            })
+          }          
           t+=1/60
+        }else{
+          //camBufferCtx.globalAlpha = 1
+          //camBufferCtx.fillStyle='#000'
+          //camBufferCtx.fillRect(0,0,c.width,c.height)
         }
+
+        buttonsLoaded = true
+        
         if(paused && ot==-1){
           ot=t
           camBufferCtx.globalAlpha = 1
           dta = camBufferCtx.textAlign
           camBufferCtx.textAlign = 'right'
           camBufferCtx.font = (fs=15) + 'px Courier Prime'
-          camBufferCtx.fillStyle = '#4f8c'
+          camBufferCtx.fillStyle = '#123d'
+          camBufferCtx.fillRect(0,0,c.width,c.height)
+          camBufferCtx.fillStyle = '#4f8d'
           camBufferCtx.fillText('paused [tab to toggle]', c.width-10, c.height - fs+fs/1.33)
           camBufferCtx.textAlign = dta
-        }  
+        }
+        
         requestAnimationFrame(Draw)
       }
 
@@ -4128,15 +4232,20 @@
         })
         
         if(launched){
-          Players = Players.filter(v=>{
+          Players = Players.filter((v, i) => {
+            if(!users.filter(q=>q.id==v.playerData.id).length){
+              cams = cams.filter((cam, idx) => idx != i)
+            }
             return users.filter(q=>q.id==v.playerData.id).length
           })
+          iCamsc = Players.length
           Players.map((AI, idx) => {
             if(AI.playerData.id == userID){
               individualPlayerData['id'] = userID
               individualPlayerData['name'] = AI.playerData.name
               individualPlayerData['time'] = AI.playerData.time
               if(typeof flymode != 'undefined') individualPlayerData['flymode'] = flymode
+              if(typeof mbutton != 'undefined') individualPlayerData['mbutton'] = mbutton
               if(typeof keys != 'undefined') individualPlayerData['keys'] = keys
               if(typeof oX != 'undefined') individualPlayerData['oX'] = oX
               if(typeof oZ != 'undefined') individualPlayerData['oZ'] = oZ
@@ -4145,7 +4254,7 @@
               if(typeof Pt != 'undefined') individualPlayerData['Pt'] = Pt
               if(typeof Yw != 'undefined') individualPlayerData['Yw'] = Yw
               if(typeof health != 'undefined') individualPlayerData['health'] = health
-              if(typeof score != 'undefined') individualPlayerData['score'] = orbsCollected
+              if(typeof score != 'undefined') individualPlayerData['score'] = score
               //if(typeof lx != 'undefined') individualPlayerData['jumpv'] = jumpv
               //if(typeof ly != 'undefined') individualPlayerData['lx'] = lx
               //if(typeof ly != 'undefined') individualPlayerData['ly'] = ly
@@ -4170,24 +4279,28 @@
               //if(typeof based != 'undefined') individualPlayerData['based'] = based
               //if(typeof alive != 'undefined') individualPlayerData['alive'] = alive
               //if(typeof fl != 'undefined') individualPlayerData['fl'] = fl
-              if(AI.playerData?.id){
+              
+            }else{
+              /*if(AI.playerData?.id){
                 el = users.filter(v=>+v.id == +AI.playerData.id)[0]
                 Object.entries(AI).forEach(([key,val]) => {
                   switch(key){
                     case 'score': if(typeof el[key] != 'undefined'){
-                      orbsCollected = Math.max(orbsCollected, el[key])
+                      score = Math.max(orbsCollected, el[key])
                     }
                     break;
                   }
                 })
-              }
-            }else{
+              }*/
               if(AI.playerData?.id){
                 el = users.filter(v=>+v.id == +AI.playerData.id)[0]
                 Object.entries(AI).forEach(([key,val]) => {
                   switch(key){
-                    case 'keys': if(typeof el[key] != 'undefined') AI.keys = el[key]; break;
-                    case 'score': if(typeof el[key] != 'undefined') AI.score = el[key]; break;
+                    // straight mapping of incoming data <-> players
+                    case 'keys': if(typeof el[key] != 'undefined')     AI[key] = el[key]; break;
+                    case 'mbutton': if(typeof el[key] != 'undefined') AI[key] = el[key]; break;
+                    case 'score': if(typeof el[key] != 'undefined')    AI[key] = el[key]; break;
+                    // reassigned mapping of incoming data <-> players (e.g. toX, vs oX, for lerp)
                     case 'oX': if(typeof el[key] != 'undefined') AI.toX = el[key]; break;
                     case 'oY': if(typeof el[key] != 'undefined') AI.toY = el[key]; break;
                     case 'oZ': if(typeof el[key] != 'undefined') AI.toZ = el[key]; break;
@@ -4254,7 +4367,7 @@
               regFrame.src = `reg.php?g=${gameSlug}&gmid=${gmid}` 
             }else{
               if(!gameConnected){
-                setInterval(()=>{sync()}, pollFreq = 333)  //ms
+                setInterval(()=>{sync()}, pollFreq = 4000)  //ms
                 //console.log('game connected')
                 gameConnected = true
               }
@@ -4298,6 +4411,32 @@
         })
       }
 
+      fullCopy = () => {
+        launchButton = document.createElement('button')
+        launchButton.innerHTML = 'launch!'
+        launchButton.className = 'buttons'
+        launchButton.onclick = () =>{ launch() }
+        launchStatus.appendChild(launchButton)
+        gameLink.innerHTML = ''
+        launchModal.style.display = 'block'
+        resultLink = document.createElement('div')
+        resultLink.className = 'resultLink'
+        if(location.href.indexOf('&p=')!=-1){
+          resultLink.innerHTML = location.href.split('&p='+userID).join('')
+        }else{
+          resultLink.innerHTML = location.href
+        }
+        gameLink.appendChild(resultLink)
+        copyButton = document.createElement('button')
+        copyButton.className = 'copyButton'
+        gameLink.appendChild(copyButton)
+        copy()
+        launchModal.style.display = 'none'
+        setTimeout(()=>{
+          mbutton = mbutton.map(v=>false)
+        },0)
+      }
+
       copy = () => {
         var range = document.createRange()
         range.selectNode(document.querySelectorAll('.resultLink')[0])
@@ -4307,20 +4446,21 @@
         window.getSelection().removeAllRanges()
         let el = document.querySelector('#copyConfirmation')
         el.style.display = 'block';
-        el.style.opacity = 1.5
+        el.style.opacity = 1
         reduceOpacity = () => {
           if(+el.style.opacity > 0){
-            el.style.opacity -= .02
-            setTimeout(()=>{
-              reduceOpacity()
-            }, 10)
+            el.style.opacity -= .02 * (launched ? 4 : 1)
+            if(+el.style.opacity<.1){
+              el.style.opacity = 1
+              el.style.display = 'none'
+            }else{
+              setTimeout(()=>{
+                reduceOpacity()
+              }, 10)
+            }
           }
         }
-        reduceOpacity()
-        setTimeout(()=>{
-          el.style.opacity = 1
-          el.style.display = 'none'
-        }, 750)
+        setTimeout(()=>{reduceOpacity()}, 250)
       }
 
       userID = launched = pchoice = false

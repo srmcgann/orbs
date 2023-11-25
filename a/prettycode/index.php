@@ -202,7 +202,7 @@
             <div class="header">
               <div class="headerItem">
                 <?php echo 'demo title: <span class="demoTitle">'.$row['title'].'</span>'?>
-		<a href="<?php echo 'http://fx.cantelope.org/?i=/d/'.$slug?>"
+		<a href="<?php echo 'http://efefx.cantelope.org/?i=/d/'.$slug?>"
  target="_blank">demo link</a>
               </div>
             </div>

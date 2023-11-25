@@ -15,5 +15,5 @@
   $port     = '3306';
   $link     = mysqli_connect($db_host,$db_user,$db_pass,$db,$port);
 
-  $baseURL  = "http://fx.cantelope.org/b/games/tetris";
+  $baseURL  = "http://efefx.cantelope.org/b/games/tetris";
 ?>
