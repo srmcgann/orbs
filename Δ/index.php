@@ -3640,9 +3640,15 @@
 
             Players.map((AI, idx) => {
               if(!camselected && +AI.playerData.id == userID) return
-              X = -AI.oX
-              Y = -AI.oY-60
-              Z = -AI.oZ
+              if(AI.playerData.id == userID){
+                X = -oX
+                Y = -oY-60
+                Z = -oZ
+              }else{
+                X = -AI.oX
+                Y = -AI.oY-60
+                Z = -AI.oZ
+              }
               camFunc(crl,cpt,cyw,cox,coy,coz)
               if(Z>0){
                 l = Qfunc()
