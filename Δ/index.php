@@ -1,6 +1,41 @@
+<?php
+  function alphaToDec($val){
+    $pow=0;
+    $res=0;
+    while($val!=""){
+      $cur=$val[strlen($val)-1];
+      $val=substr($val,0,strlen($val)-1);
+      $mul=ord($cur)<58?$cur:ord($cur)-(ord($cur)>96?87:29);
+      $res+=$mul*pow(62,$pow);
+      $pow++;
+    }
+    return $res;
+  }
+  require_once('../db.php');
+  $url = $_SERVER['REQUEST_URI'];
+  if(strpos($url, "?g=") !== false){
+    $g = explode("&",explode("?g=", $url)[1])[0];
+    $gameID = alphaToDec($g);
+    $gm = explode("&",explode("&gmid=", $url)[1])[0];
+    //$gm = alphaToDec($gm);
+    $sql = "SELECT * FROM platformSessions WHERE id = $gm";
+    $res = mysqli_query($link, $sql);
+    $row = mysqli_fetch_assoc($res);
+    $gamemaster = $row['name'];
+    $sql = "SELECT * FROM platformGames WHERE id = $gameID";
+    $res = mysqli_query($link, $sql);
+    $row = mysqli_fetch_assoc($res);
+    $data = json_decode($row['data']);
+    forEach($data->{'players'} as $key){
+      $ct++;
+    }
+    $numPlayers = $ct;
+  }
+?>
 <!DOCTYPE html>
 <html>
   <head>
+    <title>ORBS [live game / creator:<?php echo $gamemaster?> / <?php echo $numPlayers;?> players are playing]</title>
     <style>
       /* latin-ext */
       @font-face {
@@ -3640,15 +3675,9 @@
 
             Players.map((AI, idx) => {
               if(!camselected && +AI.playerData.id == userID) return
-              if(AI.playerData.id == userID){
-                X = -oX
-                Y = -oY-60
-                Z = -oZ
-              }else{
-                X = -AI.oX
-                Y = -AI.oY-60
-                Z = -AI.oZ
-              }
+              X = -AI.oX
+              Y = -AI.oY-60
+              Z = -AI.oZ
               camFunc(crl,cpt,cyw,cox,coy,coz)
               if(Z>0){
                 l = Qfunc()
@@ -4373,7 +4402,7 @@
               regFrame.src = `reg.php?g=${gameSlug}&gmid=${gmid}` 
             }else{
               if(!gameConnected){
-                setInterval(()=>{sync()}, pollFreq = 333)  //ms
+                setInterval(()=>{sync()}, pollFreq = 4000)  //ms
                 //console.log('game connected')
                 gameConnected = true
               }
@@ -4481,6 +4510,15 @@
         gameID = alphaToDec(gameSlug)
         if(gameID) sync(gameID)
       }
+      /*
+      console.log("gameMaster: <?php echo $gamemaster; ?>")
+      console.log("numPlayers: <?php echo $numPlayers; ?>")
+      console.log("gameID: <?php echo $gameID; ?>")
+      console.log("slug: <?php echo $g; ?>")
+      console.log("url: <?php echo $url; ?>")
+      console.log("sql: <?php echo $sql; ?>")
+      console.log("data", <?php echo $row['data'] ?>)
+      */
     </script>
   </body>
 </html>
